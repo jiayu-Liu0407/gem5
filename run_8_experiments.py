@@ -203,7 +203,13 @@ print("\n生成单独的参数对比图表...")
 
 if all_results:
     param_groups = ["vcs-per-vnet", "router-latency", "link-width-bits"]
-    colors = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"]  # 更好的颜色方案
+    colors = [
+        "#1f77b4",
+        "#ff7f0e",
+        "#2ca02c",
+        "#d62728",
+        "#9467bd",
+    ]  # 更好的颜色方案
 
     plot_count = 0
 
@@ -329,7 +335,9 @@ if all_results:
 
                 print(f"  保存到: {filepath}")
             else:
-                print(f"跳过图表 {plot_count}/15: {traffic} - {param} (无数据)")
+                print(
+                    f"跳过图表 {plot_count}/15: {traffic} - {param} (无数据)"
+                )
 
     # 生成汇总图表 (可选)
     print("\n生成汇总对比图表...")

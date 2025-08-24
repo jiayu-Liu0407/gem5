@@ -1,5 +1,4 @@
-"""fontTools.misc.timeTools.py -- tools for working with OpenType timestamps.
-"""
+"""fontTools.misc.timeTools.py -- tools for working with OpenType timestamps."""
 
 import os
 import time

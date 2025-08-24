@@ -38,6 +38,7 @@ addToPath("../")
 
 from topologies.Cluster import Cluster
 
+
 #
 # Note: the L1 Cache latency is only used by the sequencer on fast path hits
 #

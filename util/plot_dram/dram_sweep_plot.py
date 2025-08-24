@@ -47,6 +47,7 @@ except ImportError:
 import sys
 import re
 
+
 # Determine the parameters of the sweep from the simout output, and
 # then parse the stats and plot the 3D surface corresponding to the
 # different combinations of parallel banks, and stride size, as

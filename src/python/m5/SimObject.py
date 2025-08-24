@@ -1248,7 +1248,7 @@ class SimObject(object, metaclass=MetaSimObject):
         # The order of the dict is implementation dependent, so sort
         # it based on the key (name) to ensure the order is the same
         # on all hosts
-        for (name, child) in sorted(self._children.items()):
+        for name, child in sorted(self._children.items()):
             for obj in child.descendants():
                 yield obj
 
@@ -1271,7 +1271,7 @@ class SimObject(object, metaclass=MetaSimObject):
     def connectPorts(self):
         # Sort the ports based on their attribute name to ensure the
         # order is the same on all hosts
-        for (attr, portRef) in sorted(self._port_refs.items()):
+        for attr, portRef in sorted(self._port_refs.items()):
             portRef.ccConnect()
 
     # Default function for generating the device structure.

@@ -24,8 +24,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-""" HBM2 memory system using HBMCtrl
-"""
+"""HBM2 memory system using HBMCtrl"""
 
 from .memory import ChanneledMemory
 from .abstract_memory_system import AbstractMemorySystem

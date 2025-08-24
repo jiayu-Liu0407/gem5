@@ -76,7 +76,7 @@ system.ruby.clk_domain = SrcClockDomain(clock=args.ruby_clock)
 
 assert args.num_cpus == len(system.ruby._cpu_ports)
 
-for (i, cpu) in enumerate(system.cpu):
+for i, cpu in enumerate(system.cpu):
     # create the interrupt controller
     cpu.createInterruptController()
 

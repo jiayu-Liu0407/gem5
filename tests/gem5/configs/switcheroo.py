@@ -53,7 +53,7 @@ class Sequential:
 
     def __init__(self, cpus):
         self.first_cpu = None
-        for (cpuno, cpu) in enumerate(cpus):
+        for cpuno, cpu in enumerate(cpus):
             if not cpu.switched_out:
                 if self.first_cpu != None:
                     fatal("More than one CPU is switched in")

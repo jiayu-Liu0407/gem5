@@ -673,6 +673,7 @@ gpu_driver.device = gpu_cmd_proc
 shader.dispatcher = dispatcher
 shader.gpu_cmd_proc = gpu_cmd_proc
 
+
 # Create and assign the workload Check for rel_path in elements of
 # base_list using test, returning the first full path that satisfies test
 def find_path(base_list, rel_path, test):
@@ -756,7 +757,7 @@ if fast_forward:
     ]
 
 # Other CPU strings cause bad addresses in ROCm. Revert back to M5 Simulator.
-for (i, cpu) in enumerate(cpu_list):
+for i, cpu in enumerate(cpu_list):
     for j in range(len(cpu)):
         cpu.isa[j].vendor_string = "M5 Simulator"
 
@@ -854,9 +855,9 @@ gpu_port_idx = gpu_port_idx - args.num_cp * 2
 token_port_idx = 0
 for i in range(len(system.ruby._cpu_ports)):
     if isinstance(system.ruby._cpu_ports[i], VIPERCoalescer):
-        system.cpu[shader_idx].CUs[
-            token_port_idx
-        ].gmTokenPort = system.ruby._cpu_ports[i].gmTokenPort
+        system.cpu[shader_idx].CUs[token_port_idx].gmTokenPort = (
+            system.ruby._cpu_ports[i].gmTokenPort
+        )
         token_port_idx += 1
 
 wavefront_size = args.wf_size

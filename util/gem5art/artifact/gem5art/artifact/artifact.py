@@ -24,8 +24,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""File contains the Artifact class and helper functions
-"""
+"""File contains the Artifact class and helper functions"""
 
 import hashlib
 from inspect import cleandoc
@@ -166,7 +165,6 @@ class Artifact:
         version: str = "",
         **kwargs: str,
     ) -> "Artifact":
-
         """Constructs a new artifact without using the database.
 
         Different from registerArtifact(), this method won't use database.

@@ -101,7 +101,7 @@ system.ruby.clk_domain = SrcClockDomain(
 
 assert len(cpus) == len(system.ruby._cpu_ports)
 
-for (i, ruby_port) in enumerate(system.ruby._cpu_ports):
+for i, ruby_port in enumerate(system.ruby._cpu_ports):
     #
     # Tie the cpu port to the ruby cpu ports and
     # physmem, respectively

@@ -355,7 +355,7 @@ class Simulator:
         """
         start = 0
         to_return = []
-        for (exit_event, tick) in self._tick_stopwatch:
+        for exit_event, tick in self._tick_stopwatch:
             if exit_event == ExitEvent.WORKBEGIN:
                 start = tick
             elif exit_event == ExitEvent.WORKEND:
@@ -377,9 +377,11 @@ class Simulator:
             self._board._pre_instantiate()
 
             root = Root(
-                full_system=self._full_system
-                if self._full_system is not None
-                else self._board.is_fullsystem(),
+                full_system=(
+                    self._full_system
+                    if self._full_system is not None
+                    else self._board.is_fullsystem()
+                ),
                 board=self._board,
             )
 

@@ -138,9 +138,9 @@ def handle_statement(parser, container, statement):
     if statement.is_microop:
         if statement.mnemonic not in parser.microops.keys():
             raise Exception(f"Unrecognized mnemonic: {statement.mnemonic}")
-        parser.symbols[
-            "__microopClassFromInsideTheAssembler"
-        ] = parser.microops[statement.mnemonic]
+        parser.symbols["__microopClassFromInsideTheAssembler"] = (
+            parser.microops[statement.mnemonic]
+        )
         try:
             microop = eval(
                 f"__microopClassFromInsideTheAssembler({statement.params})",
@@ -164,9 +164,9 @@ def handle_statement(parser, container, statement):
     elif statement.is_directive:
         if statement.name not in container.directives.keys():
             raise Exception(f"Unrecognized directive: {statement.name}")
-        parser.symbols[
-            "__directiveFunctionFromInsideTheAssembler"
-        ] = container.directives[statement.name]
+        parser.symbols["__directiveFunctionFromInsideTheAssembler"] = (
+            container.directives[statement.name]
+        )
         try:
             eval(
                 f"__directiveFunctionFromInsideTheAssembler({statement.params})",
@@ -186,6 +186,7 @@ def handle_statement(parser, container, statement):
 # Lexer specification
 #
 ##########################################################################
+
 
 # Error handler.  Just call exit.  Output formatted to work under
 # Emacs compile-mode.  Optional 'print_traceback' arg, if set to True,
@@ -230,6 +231,7 @@ states = (
 reserved_map = {}
 for r in reserved:
     reserved_map[r.lower()] = r
+
 
 # Ignore comments
 def t_ANY_COMMENT(t):
@@ -359,6 +361,7 @@ def t_ANY_error(t):
 # Parser specification
 #
 ##########################################################################
+
 
 # Start symbol for a file which may have more than one macroop or rom
 # specification.

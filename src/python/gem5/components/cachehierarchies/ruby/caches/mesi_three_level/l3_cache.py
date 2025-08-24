@@ -28,6 +28,7 @@ from m5.objects import MessageBuffer, RubyCache, L2Cache_Controller
 
 import math
 
+
 # L2Cache_Controller is ruby backend's terminology corresponding to
 # L3 cache in stdlib.
 class L3Cache(L2Cache_Controller):

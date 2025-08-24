@@ -38,7 +38,6 @@ from typing import List, Optional
 
 
 class TestBoard(AbstractSystemBoard):
-
     """This is a Testing Board used to run traffic generators on a simple
     architecture.
 

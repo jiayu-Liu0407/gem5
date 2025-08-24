@@ -33,7 +33,6 @@ from m5.objects import System, SimObject
 
 
 class AbstractSystemBoard(System, AbstractBoard):
-
     """
     An abstract board for cases where boards should inherit from System.
     """

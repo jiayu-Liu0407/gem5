@@ -1,4 +1,4 @@
-""" Simplify TrueType glyphs by merging overlapping contours/components.
+"""Simplify TrueType glyphs by merging overlapping contours/components.
 
 Requires https://github.com/fonttools/skia-pathops
 """

@@ -55,6 +55,7 @@ os.chdir("../../../")
 sys.path.append("build/ext/dsent")
 import dsent
 
+
 # Parse gem5 config.ini file for the configuration parameters related to
 # the on-chip network.
 def parseConfig(config_file):

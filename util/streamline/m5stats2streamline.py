@@ -143,6 +143,7 @@ num_events = args.num_events
 start_tick = -1
 end_tick = -1
 
+
 # Parse gem5 config.ini file to determine some system configurations.
 # Number of CPUs, L2s, etc.
 def parseConfig(config_file):

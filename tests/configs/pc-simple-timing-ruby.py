@@ -81,7 +81,7 @@ system.ruby.clk_domain = SrcClockDomain(
 # assuming that there is just one such port.
 system.iobus.mem_side_ports = system.ruby._io_port.in_ports
 
-for (i, cpu) in enumerate(system.cpu):
+for i, cpu in enumerate(system.cpu):
     # create the interrupt controller
     cpu.createInterruptController()
     # Tie the cpu ports to the correct ruby system ports

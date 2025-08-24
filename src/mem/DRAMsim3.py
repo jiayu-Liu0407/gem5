@@ -36,6 +36,7 @@
 from m5.params import *
 from m5.objects.AbstractMemory import *
 
+
 # A wrapper for DRAMSim3 multi-channel memory controller
 class DRAMsim3(AbstractMemory):
     type = "DRAMsim3"
