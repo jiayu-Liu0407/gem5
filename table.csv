@@ -1,0 +1,6 @@
+mode,average_packet_latency,reception_rate
+uniform_random,4000.0,0.001563
+shuffle,5500.0,0.001563
+transpose,nan,0.0
+tornado,nan,0.0
+neighbor,3500.0,0.002344

@@ -1,0 +1,30 @@
+图表索引 - 参数分析结果
+==================================================
+
+Uniform Random Traffic Pattern:
+  - Vcs Per Vnet: uniform_random_vcs-per-vnet_analysis.png
+  - Router Latency: uniform_random_router-latency_analysis.png
+  - Link Width Bits: uniform_random_link-width-bits_analysis.png
+
+Shuffle Traffic Pattern:
+  - Vcs Per Vnet: shuffle_vcs-per-vnet_analysis.png
+  - Router Latency: shuffle_router-latency_analysis.png
+  - Link Width Bits: shuffle_link-width-bits_analysis.png
+
+Transpose Traffic Pattern:
+  - Vcs Per Vnet: transpose_vcs-per-vnet_analysis.png
+  - Router Latency: transpose_router-latency_analysis.png
+  - Link Width Bits: transpose_link-width-bits_analysis.png
+
+Tornado Traffic Pattern:
+  - Vcs Per Vnet: tornado_vcs-per-vnet_analysis.png
+  - Router Latency: tornado_router-latency_analysis.png
+  - Link Width Bits: tornado_link-width-bits_analysis.png
+
+Neighbor Traffic Pattern:
+  - Vcs Per Vnet: neighbor_vcs-per-vnet_analysis.png
+  - Router Latency: neighbor_router-latency_analysis.png
+  - Link Width Bits: neighbor_link-width-bits_analysis.png
+
+汇总图表:
+  - summary_all_experiments.png

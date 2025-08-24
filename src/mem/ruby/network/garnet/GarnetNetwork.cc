@@ -447,6 +447,10 @@ GarnetNetwork::regStats()
     m_avg_packet_latency
         = m_avg_packet_network_latency + m_avg_packet_queueing_latency;
 
+    m_reception_rate
+        .name(name() + ".reception_rate")
+        .flags(statistics::oneline);
+
     // Flits
     m_flits_received
         .init(m_virtual_networks)
@@ -575,6 +579,24 @@ GarnetNetwork::collateStats()
             m_average_vc_load[j] += ((double)vc_load[j] / time_delta);
         }
     }
+
+    Cycles sim_cycles = curCycle() - rs->getStartCycle();
+    int num_nodes = m_routers.size();
+
+    if (sim_cycles > 0 && num_nodes > 0) {
+        double total_packets_received = 0.0;
+        for (int i = 0; i < m_virtual_networks; i++) {
+            total_packets_received += m_packets_received[i].value();
+        }
+
+        double reception_rate = total_packets_received /
+                               double(num_nodes) /
+                               double(sim_cycles);
+        m_reception_rate = reception_rate;
+    } else {
+        m_reception_rate = 0.0;
+    }
+
 
     // Ask the routers to collate their statistics
     for (int i = 0; i < m_routers.size(); i++) {

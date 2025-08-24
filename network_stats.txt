@@ -1,0 +1,4 @@
+
+average_packet_network_latency = 6897.427755 cycles/packet
+reception_rate = 0.004920 packets/node/cycle
+packets_injected = 3151 packets
