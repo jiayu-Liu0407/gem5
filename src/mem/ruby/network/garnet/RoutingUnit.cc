@@ -193,6 +193,8 @@ RoutingUnit::outportCompute(RouteInfo route, int inport,
         // any custom algorithm
         case CUSTOM_: outport =
             outportComputeCustom(route, inport, inport_dirn); break;
+        case RING_: outport =
+            outportComputeRing(route, inport, inport_dirn); break;
         default: outport =
             lookupRoutingTable(route.vnet, route.net_dest); break;
     }
@@ -268,6 +270,28 @@ RoutingUnit::outportComputeCustom(RouteInfo route,
                                  PortDirection inport_dirn)
 {
     panic("%s placeholder executed", __FUNCTION__);
+}
+
+int
+RoutingUnit::outportComputeRing(RouteInfo route, int inport,
+                                PortDirection inport_dirn)
+{
+    int src = m_router->get_id();
+    int dest = route.dest_router;
+
+    // 获取实际的路由器数量，而不是硬编码16
+    int num_routers = m_router->get_net_ptr()->getNumRouters();
+
+    // 计算顺时针和逆时针距离
+    int clockwise_dist = (dest - src + num_routers) % num_routers;
+    int counter_clockwise_dist = (src - dest + num_routers) % num_routers;
+
+    // 选择较短路径
+    if (clockwise_dist <= counter_clockwise_dist) {
+        return m_outports_dirn2idx["East"];  // 顺时针
+    } else {
+        return m_outports_dirn2idx["West"];  // 逆时针
+    }
 }
 
 } // namespace garnet
