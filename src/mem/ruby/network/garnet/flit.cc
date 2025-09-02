@@ -61,6 +61,8 @@ flit::flit(int packet_id, int id, int  vc, int vnet, RouteInfo route, int size,
     m_width = bWidth;
     msgSize = MsgSize;
 
+    m_sa_timestamp = 0;
+
     if (size == 1) {
         m_type = HEAD_TAIL_;
         return;

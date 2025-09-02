@@ -54,9 +54,9 @@ class flitBuffer
     flitBuffer(int maximum_size);
 
     bool isReady(Tick curTime);
-    bool isEmpty();
+    bool isEmpty() const;
     void print(std::ostream& out) const;
-    bool isFull();
+    bool isFull() const;
     void setMaxSize(int maximum);
     int getSize() const { return m_buffer.size(); }
 

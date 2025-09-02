@@ -88,10 +88,24 @@ OutputUnit::increment_credit(int out_vc)
 bool
 OutputUnit::has_credit(int out_vc)
 {
-    assert(outVcState[out_vc].isInState(ACTIVE_, curTick()));
-    return outVcState[out_vc].has_credit();
+    bool is_wormhole = m_router->get_net_ptr()->isWormholeEnabled();
+
+    if (is_wormhole) {
+        // 虫洞模式：只要VC有credit就行，不要求必须是ACTIVE状态
+        return outVcState[out_vc].has_credit();
+    } else {
+        assert(outVcState[out_vc].isInState(ACTIVE_, curTick()));
+        return outVcState[out_vc].has_credit();
+    }
 }
 
+// 添加新的安全检查函数
+bool
+OutputUnit::can_safely_decrement_credit(int out_vc)
+{
+    return outVcState[out_vc].has_credit() &&
+           outVcState[out_vc].get_credit_count() > 0;
+}
 
 // Check if the output port (i.e., input port at next router) has free VCs.
 bool
@@ -106,14 +120,63 @@ OutputUnit::has_free_vc(int vnet)
     return false;
 }
 
+bool
+OutputUnit::has_free_vc_wormhole(int vnet)
+{
+    int vc_base = vnet*m_vc_per_vnet;
+    for (int vc = vc_base; vc < vc_base + m_vc_per_vnet; vc++) {
+        if (is_vc_idle(vc, curTick()) ||
+            (outVcState[vc].isInState(ACTIVE_, curTick()) &&
+             outVcState[vc].has_credit())) {
+            return true;
+        }
+    }
+    return false;
+}
+
 // Assign a free output VC to the winner of Switch Allocation
 int
 OutputUnit::select_free_vc(int vnet)
 {
-    int vc_base = vnet*m_vc_per_vnet;
+    int vc_base = vnet * m_vc_per_vnet;
+
+    // 优先选择空闲VC
     for (int vc = vc_base; vc < vc_base + m_vc_per_vnet; vc++) {
         if (is_vc_idle(vc, curTick())) {
-            outVcState[vc].setState(ACTIVE_, curTick());
+            set_vc_state(ACTIVE_, vc, curTick());
+            return vc;
+        }
+    }
+
+    // 如果没有空闲VC，选择有credit的活跃VC
+    for (int vc = vc_base; vc < vc_base + m_vc_per_vnet; vc++) {
+        if (outVcState[vc].isInState(ACTIVE_, curTick()) &&
+            outVcState[vc].has_credit()) {
+            return vc;  // 虫洞模式：重用活跃VC
+        }
+    }
+
+    return -1;  // 没有可用VC
+}
+
+// For wormhole: select VC that has space (either idle or has credits)
+int
+OutputUnit::select_free_vc_wormhole(int vnet)
+{
+    int vc_base = vnet*m_vc_per_vnet;
+
+    // First try to find an idle VC
+    for (int vc = vc_base; vc < vc_base + m_vc_per_vnet; vc++) {
+        if (is_vc_idle(vc, curTick())) {
+            set_vc_state(ACTIVE_, vc, curTick());
+            return vc;
+        }
+    }
+
+    // If no idle VC, try to find an active VC with available credits
+    for (int vc = vc_base; vc < vc_base + m_vc_per_vnet; vc++) {
+        if (outVcState[vc].isInState(ACTIVE_, curTick()) &&
+            outVcState[vc].has_credit()) {
             return vc;
         }
     }
@@ -136,8 +199,9 @@ OutputUnit::wakeup()
         Credit *t_credit = (Credit*) m_credit_link->consumeLink();
         increment_credit(t_credit->get_vc());
 
-        if (t_credit->is_free_signal())
+        if (t_credit->is_free_signal()) {
             set_vc_state(IDLE_, t_credit->get_vc(), curTick());
+        }
 
         delete t_credit;
 

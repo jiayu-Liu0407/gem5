@@ -77,6 +77,44 @@ CrossbarSwitch::wakeup()
         flit *t_flit = switch_buffer.peekTopFlit();
         if (t_flit->is_stage(ST_, curTick())) {
             int outport = t_flit->get_outport();
+            int outvc = t_flit->get_vc();
+            // 🔥 关键添加：虫洞模式下在ST阶段消耗credit
+            bool is_wormhole = m_router->get_net_ptr()->isWormholeEnabled();
+            if (is_wormhole) {
+                auto output_unit = m_router->getOutputUnit(outport);
+
+                // 🔥 时效性检查：如果SA决策太旧，重新验证credit
+                Tick current_time = curTick();
+                Tick sa_time = t_flit->get_sa_timestamp();
+
+                if (current_time - sa_time > 2) {
+                    // SA决策超过2个周期，重新检查credit可用性
+                    if (!output_unit->has_credit(outvc)) {
+                        // Credit不可用，重新调度到SA阶段
+                        DPRINTF(RubyNetwork,
+                                "Router[%d]: Credit stale for VC %d, "
+                                "rescheduling to SA\n",
+                                m_router->get_id(), outvc);
+                        t_flit->advance_stage(SA_,
+                            m_router->clockEdge(Cycles(1)));
+                        continue;
+                    }
+                }
+
+                // 🔥 安全的credit消耗
+                if (output_unit->can_safely_decrement_credit(outvc)) {
+                    output_unit->decrement_credit(outvc);
+                } else {
+                    // Credit不足，重新调度到SA阶段而不是panic
+                    DPRINTF(RubyNetwork,
+                            "Router[%d]: Insufficient credit for VC %d, "
+                            "rescheduling to SA\n",
+                            m_router->get_id(), outvc);
+                    t_flit->advance_stage(SA_, m_router->clockEdge(Cycles(1)));
+                    continue;
+                }
+            }
+            // 普通模式下credit已经在SA阶段消耗了，这里不需要处理
 
             // flit performs LT_ in the next cycle
             t_flit->advance_stage(LT_, m_router->clockEdge(Cycles(1)));

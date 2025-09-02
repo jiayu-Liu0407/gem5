@@ -280,6 +280,8 @@ class NetworkInterface : public ClockedObject, public Consumer
     std::vector<OutVcState> outVcState;
 
     std::vector<int> m_stall_count;
+    std::vector<int> m_vc_dest_router;  // -1 means VC is idle/available
+    int calculateVC_wormhole(int vnet, int dest_router);
 
     // Input Flit Buffers
     // The flit buffers which will serve the Consumer

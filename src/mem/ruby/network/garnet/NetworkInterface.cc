@@ -60,6 +60,8 @@ NetworkInterface::NetworkInterface(const Params &p)
 {
     m_stall_count.resize(m_virtual_networks);
     niOutVcs.resize(0);
+    // 初始化VC目的地跟踪
+    m_vc_dest_router.clear();
 }
 
 void
@@ -99,6 +101,10 @@ NetworkInterface::addOutPort(NetworkLink *out_link,
         niOutVcs.resize(m_num_vcs);
         outVcState.reserve(m_num_vcs);
         m_ni_out_vcs_enqueue_time.resize(m_num_vcs);
+
+        // 初始化VC目的地跟踪
+        m_vc_dest_router.resize(m_num_vcs, -1);  // -1表示VC空闲
+
         // instantiating the NI flit buffers
         for (int i = 0; i < m_num_vcs; i++) {
             m_ni_out_vcs_enqueue_time[i] = Tick(INFINITE_);
@@ -286,10 +292,18 @@ NetworkInterface::wakeup()
         CreditLink *inCreditLink = oPort->inCreditLink();
         if (inCreditLink->isReady(curTick())) {
             Credit *t_credit = (Credit*) inCreditLink->consumeLink();
+            int vc_id = t_credit->get_vc();
             outVcState[t_credit->get_vc()].increment_credit();
             if (t_credit->is_free_signal()) {
                 outVcState[t_credit->get_vc()].setState(IDLE_,
                     curTick());
+                // 虫洞模式：清除VC的目的地记录
+                if (m_net_ptr->isWormholeEnabled()) {
+                    m_vc_dest_router[vc_id] = -1;
+                    DPRINTF(RubyNetwork,
+                            "NI[%d]: VC[%d] freed, dest_router cleared\n",
+                            m_id, vc_id);
+                    }
             }
             delete t_credit;
         }
@@ -385,17 +399,26 @@ NetworkInterface::flitisizeMessage(MsgPtr msg_ptr, int vnet)
         m_net_ptr->MessageSizeType_to_int(net_msg_ptr->getMessageSize()),
         vnet, oPort->bitWidth());
 
+    bool is_wormhole = m_net_ptr->isWormholeEnabled();
+
     // loop to convert all multicast messages into unicast messages
     for (int ctr = 0; ctr < dest_nodes.size(); ctr++) {
-
+        NodeID destID = dest_nodes[ctr];
+        int dest_router = m_net_ptr->get_router_id(destID, vnet);
         // this will return a free output virtual channel
-        int vc = calculateVC(vnet);
+        int vc;
+        if (is_wormhole) {
+            // 虫洞模式：使用智能VC分配
+            vc = calculateVC_wormhole(vnet, dest_router);
+        } else {
+            // 普通模式：使用原有分配方式
+            vc = calculateVC(vnet);
+        }
 
         if (vc == -1) {
             return false ;
         }
         MsgPtr new_msg_ptr = msg_ptr->clone();
-        NodeID destID = dest_nodes[ctr];
 
         Message *new_net_msg_ptr = new_msg_ptr.get();
         if (dest_nodes.size() > 1) {
@@ -459,6 +482,9 @@ NetworkInterface::flitisizeMessage(MsgPtr msg_ptr, int vnet)
 int
 NetworkInterface::calculateVC(int vnet)
 {
+    bool is_wormhole = m_net_ptr->isWormholeEnabled();
+    if (!is_wormhole) {
+        // 普通模式：保持原有逻辑
     for (int i = 0; i < m_vc_per_vnet; i++) {
         int delta = m_vc_allocator[vnet];
         m_vc_allocator[vnet]++;
@@ -471,6 +497,23 @@ NetworkInterface::calculateVC(int vnet)
             return ((vnet*m_vc_per_vnet) + delta);
         }
     }
+    } else {
+        // 虫洞模式：智能VC分配
+        // 首先尝试找到空闲的VC
+        for (int i = 0; i < m_vc_per_vnet; i++) {
+            int delta = m_vc_allocator[vnet];
+            m_vc_allocator[vnet]++;
+            if (m_vc_allocator[vnet] == m_vc_per_vnet)
+                m_vc_allocator[vnet] = 0;
+
+            int vc_id = (vnet*m_vc_per_vnet) + delta;
+
+            if (outVcState[vc_id].isInState(IDLE_, curTick())) {
+                vc_busy_counter[vnet] = 0;
+                return vc_id;
+            }
+        }
+    }
 
     vc_busy_counter[vnet] += 1;
     panic_if(vc_busy_counter[vnet] > m_deadlock_threshold,
@@ -478,6 +521,34 @@ NetworkInterface::calculateVC(int vnet)
         name(), vnet, curTick());
 
     return -1;
+}
+
+// 添加虫洞模式专用的VC分配函数
+int
+NetworkInterface::calculateVC_wormhole(int vnet, int dest_router)
+{
+    // 优先选择空闲VC，避免与现有流量冲突
+    for (int i = 0; i < m_vc_per_vnet; i++) {
+        int vc_id = (vnet*m_vc_per_vnet) + i;
+
+        // 首选：空闲VC
+        if (outVcState[vc_id].isInState(IDLE_, curTick())) {
+            return vc_id;
+        }
+    }
+
+    // 次选：目的地匹配的活跃VC
+    for (int i = 0; i < m_vc_per_vnet; i++) {
+        int vc_id = (vnet*m_vc_per_vnet) + i;
+
+        if (outVcState[vc_id].isInState(ACTIVE_, curTick()) &&
+            m_vc_dest_router[vc_id] == dest_router &&  // 目的地匹配
+            outVcState[vc_id].has_credit()) {
+            return vc_id;
+        }
+    }
+
+    return -1;  // 高负载时宁可等待也不冲突
 }
 
 void

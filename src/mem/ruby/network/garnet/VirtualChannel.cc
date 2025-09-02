@@ -42,7 +42,14 @@ namespace garnet
 
 VirtualChannel::VirtualChannel()
   : inputBuffer(), m_vc_state(IDLE_, Tick(0)), m_output_port(-1),
-    m_enqueue_time(INFINITE_), m_output_vc(-1)
+    m_enqueue_time(INFINITE_), m_output_vc(-1), m_packet_count(0)
+{
+}
+
+// 添加新的构造函数
+VirtualChannel::VirtualChannel(int buffer_size)
+  : inputBuffer(buffer_size), m_vc_state(IDLE_, Tick(0)), m_output_port(-1),
+    m_enqueue_time(INFINITE_), m_output_vc(-1), m_packet_count(0)
 {
 }
 
@@ -54,6 +61,7 @@ VirtualChannel::set_idle(Tick curTime)
     m_enqueue_time = Tick(INFINITE_);
     m_output_port = -1;
     m_output_vc = -1;
+    m_packet_count = 0;
 }
 
 void

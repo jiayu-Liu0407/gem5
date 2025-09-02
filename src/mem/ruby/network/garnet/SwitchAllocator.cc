@@ -213,30 +213,61 @@ SwitchAllocator::arbitrate_outports()
                 // (This was updated in VC by vc_allocate, but not in flit)
                 t_flit->set_vc(outvc);
 
+                bool is_wormhole =
+                    m_router->get_net_ptr()->isWormholeEnabled();
                 // decrement credit in outvc
-                output_unit->decrement_credit(outvc);
+                if (!is_wormhole) {
+                    // 普通模式：预订机制，立即消耗credit
+                    output_unit->decrement_credit(outvc);
+                } else {
+                    // 虫洞模式：延迟到ST阶段消耗credit
+                    // 在这里我们只需要确保VC状态正确
+                    // 实际的credit消耗将在CrossbarSwitch中进行
+                    t_flit->set_sa_timestamp(curTick());
+                }
 
                 // flit ready for Switch Traversal
                 t_flit->advance_stage(ST_, curTick());
                 m_router->grant_switch(inport, t_flit);
                 m_output_arbiter_activity++;
 
-                if ((t_flit->get_type() == TAIL_) ||
-                    t_flit->get_type() == HEAD_TAIL_) {
-
-                    // This Input VC should now be empty
-                    assert(!(input_unit->isReady(invc, curTick())));
-
-                    // Free this VC
-                    input_unit->set_vc_idle(invc, curTick());
-
-                    // Send a credit back
-                    // along with the information that this VC is now idle
-                    input_unit->increment_credit(invc, true, curTick());
+                // For wormhole mode with single-flit packets (HEAD_TAIL)
+                if (t_flit->get_type() == HEAD_TAIL_) {
+                    if (is_wormhole) {
+                        // 虫洞模式：简化credit处理
+                        // 检查VC是否还有更多flit
+                        if (!input_unit->isReady(invc, curTick())) {
+                            // VC为空，可以释放
+                            input_unit->set_vc_idle(invc, curTick());
+                            input_unit->increment_credit(invc, true,
+                                curTick());
+                        } else {
+                            // VC还有flit，只发送普通credit
+                            input_unit->increment_credit(invc, false,
+                                curTick());
+                        }
+                    } else {
+                        // Normal mode - free VC immediately after HEAD_TAIL
+                        assert(!(input_unit->isReady(invc, curTick())));
+                        input_unit->set_vc_idle(invc, curTick());
+                        input_unit->increment_credit(invc, true,
+                            curTick());
+                    }
                 } else {
                     // Send a credit back
                     // but do not indicate that the VC is idle
                     input_unit->increment_credit(invc, false, curTick());
+
+                    // 对于TAIL flit，需要释放VC
+                    if (t_flit->get_type() == TAIL_) {
+                        input_unit->set_vc_idle(invc, curTick());
+                        // 可能需要发送带free信号的额外credit
+                        if (is_wormhole &&
+                            !input_unit->isReady(invc, curTick())) {
+                            input_unit->increment_credit(invc, true,
+                                curTick());
+                        }
+                    }
                 }
 
                 // remove this request
@@ -292,11 +323,15 @@ SwitchAllocator::send_allowed(int inport, int invc, int outport, int outvc)
     bool has_credit = false;
 
     auto output_unit = m_router->getOutputUnit(outport);
+    bool is_wormhole = m_router->get_net_ptr()->isWormholeEnabled();
     if (!has_outvc) {
-
-        // needs outvc
-        // this is only true for HEAD and HEAD_TAIL flits.
-
+        if (is_wormhole) {
+            // 虫洞模式：使用专门的检查函数
+            if (output_unit->has_free_vc_wormhole(vnet)) {
+                has_outvc = true;
+                has_credit = true;
+            }
+        } else {
         if (output_unit->has_free_vc(vnet)) {
 
             has_outvc = true;
@@ -305,6 +340,7 @@ SwitchAllocator::send_allowed(int inport, int invc, int outport, int outvc)
             // so no need for additional credit check
             has_credit = true;
         }
+    }
     } else {
         has_credit = output_unit->has_credit(outvc);
     }
@@ -341,9 +377,16 @@ SwitchAllocator::send_allowed(int inport, int invc, int outport, int outvc)
 int
 SwitchAllocator::vc_allocate(int outport, int inport, int invc)
 {
-    // Select a free VC from the output port
-    int outvc =
-        m_router->getOutputUnit(outport)->select_free_vc(get_vnet(invc));
+    int vnet = get_vnet(invc);
+    bool is_wormhole = m_router->get_net_ptr()->isWormholeEnabled();
+
+    int outvc;
+    if (is_wormhole) {
+        outvc = m_router->getOutputUnit(outport)->
+            select_free_vc_wormhole(vnet);
+    } else {
+        outvc = m_router->getOutputUnit(outport)->select_free_vc(vnet);
+    }
 
     // has to get a valid VC since it checked before performing SA
     assert(outvc != -1);

@@ -82,6 +82,9 @@ class flit
     void increment_hops() { m_route.hops_traversed++; }
     virtual void print(std::ostream& out) const;
 
+    void set_sa_timestamp(Tick time) { m_sa_timestamp = time; }
+    Tick get_sa_timestamp() const { return m_sa_timestamp; }
+
     bool
     is_stage(flit_stage stage, Tick time)
     {
@@ -129,6 +132,7 @@ class flit
     int m_outport;
     Tick src_delay;
     std::pair<flit_stage, Tick> m_stage;
+    Tick m_sa_timestamp; // store the time when the flit reaches switch
 };
 
 inline std::ostream&

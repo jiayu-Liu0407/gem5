@@ -59,7 +59,13 @@ InputUnit::InputUnit(int id, PortDirection direction, Router *router)
     // Instantiating the virtual channels
     virtualChannels.reserve(m_num_vcs);
     for (int i=0; i < m_num_vcs; i++) {
-        virtualChannels.emplace_back();
+        if (m_router->get_net_ptr()->isWormholeEnabled()) {
+            // 虫洞模式：固定16个flit的缓冲区
+            virtualChannels.emplace_back(16);
+        } else {
+            // 普通模式：使用默认缓冲区大小
+            virtualChannels.emplace_back();
+        }
     }
 }
 
@@ -87,13 +93,40 @@ InputUnit::wakeup()
         int vc = t_flit->get_vc();
         t_flit->increment_hops(); // for stats
 
+        bool is_wormhole = m_router->get_net_ptr()->isWormholeEnabled();
+
         if ((t_flit->get_type() == HEAD_) ||
             (t_flit->get_type() == HEAD_TAIL_)) {
 
+            if (is_wormhole) {
+                // 虫洞模式：更宽松的VC管理
+                if (virtualChannels[vc].get_state() == IDLE_) {
+                    // VC空闲，正常激活
+                    set_vc_active(vc, curTick());
+                    int outport = m_router->route_compute(t_flit->get_route(),
+                        m_id, m_direction);
+                    grant_outport(vc, outport);
+
+                    DPRINTF(RubyNetwork,
+                            "Router[%d] VC[%d] activated for new packet "
+                            "to port %d\n",
+                            m_router->get_id(), vc, outport);
+                } else {
+                    // VC已经活跃，但在虫洞模式下允许新包加入
+                    // 重新计算路由（每个包可能去不同地方）
+                    int outport = m_router->route_compute(t_flit->get_route(),
+                        m_id, m_direction);
+                    grant_outport(vc, outport);
+
+                    DPRINTF(RubyNetwork,
+                            "Router[%d] VC[%d] reused for packet to port %d\n",
+                            m_router->get_id(), vc, outport);
+                }
+            } else {
+                // Normal mode - VC must be idle for new packets
+
             assert(virtualChannels[vc].get_state() == IDLE_);
             set_vc_active(vc, curTick());
-
-            // Route computation for this vc
             int outport = m_router->route_compute(t_flit->get_route(),
                 m_id, m_direction);
 
@@ -101,6 +134,7 @@ InputUnit::wakeup()
             // All flits in this packet will use this output port
             // The output port field in the flit is updated after it wins SA
             grant_outport(vc, outport);
+            }
 
         } else {
             assert(virtualChannels[vc].get_state() == ACTIVE_);

@@ -54,10 +54,16 @@ OutVcState::OutVcState(int id, GarnetNetwork *network_ptr,
      */
     int vnet = floor(id/consumerVcs);
 
-    if (network_ptr->get_vnet_type(vnet) == DATA_VNET_)
-        m_max_credit_count = network_ptr->getBuffersPerDataVC();
-    else
-        m_max_credit_count = network_ptr->getBuffersPerCtrlVC();
+    if (network_ptr->isWormholeEnabled()) {
+        // 🔥 虫洞模式：固定16个flit的缓冲区，与InputUnit一致
+        m_max_credit_count = 16;
+    } else {
+        // 普通模式：使用网络配置的缓冲区大小
+        if (network_ptr->get_vnet_type(vnet) == DATA_VNET_)
+            m_max_credit_count = network_ptr->getBuffersPerDataVC();
+        else
+            m_max_credit_count = network_ptr->getBuffersPerCtrlVC();
+    }
 
     m_credit_count = m_max_credit_count;
     assert(m_credit_count >= 1);

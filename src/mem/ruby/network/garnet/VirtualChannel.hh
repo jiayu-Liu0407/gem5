@@ -50,6 +50,7 @@ class VirtualChannel
 {
   public:
     VirtualChannel();
+    VirtualChannel(int buffer_size);
     ~VirtualChannel() = default;
 
     bool need_stage(flit_stage stage, Tick time);
@@ -74,6 +75,9 @@ class VirtualChannel
     insertFlit(flit *t_flit)
     {
         inputBuffer.insert(t_flit);
+        if (t_flit->get_type() == HEAD_TAIL_) {
+            m_packet_count++;
+        }
     }
 
     inline void
@@ -92,7 +96,24 @@ class VirtualChannel
     inline flit*
     getTopFlit()
     {
-        return inputBuffer.getTopFlit();
+        flit *t_flit = inputBuffer.getTopFlit();
+        if (t_flit && t_flit->get_type() == HEAD_TAIL_) {
+            m_packet_count--;
+        }
+        return t_flit;
+    }
+
+    // For wormhole routing - check if VC can accept more flits
+    inline bool canAcceptFlit() const
+    {
+        return !inputBuffer.isFull();
+    }
+
+    // Reset VC for wormhole mode (don't change state to IDLE)
+    inline void resetForWormhole(Tick curTime)
+    {
+        m_enqueue_time = curTime;
+        // Keep VC active and maintain outport assignment
     }
 
     bool functionalRead(Packet *pkt, WriteMask &mask);
@@ -104,6 +125,7 @@ class VirtualChannel
     int m_output_port;
     Tick m_enqueue_time;
     int m_output_vc;
+    int m_packet_count;
 };
 
 } // namespace garnet
