@@ -28,9 +28,9 @@ def run_simulation(config_name, extra_args=""):
         "--num-cpus=64",
         "--num-dirs=64",
         "--topology=Mesh_XY",
-        "--mesh-rows=4",
+        "--mesh-rows=8",
         "--inj-vnet=0",
-        "--synthetic=shuffle",
+        "--synthetic=uniform_random",
         "--sim-cycles=10000",
         "--injectionrate=0.7",
     ]
