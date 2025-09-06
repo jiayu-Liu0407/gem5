@@ -80,6 +80,17 @@ class RoutingUnit
     int outportComputeCustom(RouteInfo route,
                              int inport,
                              PortDirection inport_dirn);
+    // Routing for Mesh with Bypass
+    int outportComputeXYBypass(RouteInfo route,
+                               int inport,
+                               PortDirection inport_dirn);
+    int outportCompute2BitTree(RouteInfo route,
+                               int inport,
+                               PortDirection inport_dirn);   
+    // Routing for 3BitTree
+    int outportCompute3BitTree(RouteInfo route,
+                               int inport,
+                               PortDirection inport_dirn);                      
 
 
     // Returns true if vnet is present in the vector

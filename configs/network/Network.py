@@ -95,7 +95,10 @@ def define_options(parser):
         help="""routing algorithm in network.
             0: weight-based table
             1: XY (for Mesh. see garnet/RoutingUnit.cc)
-            2: Custom (see garnet/RoutingUnit.cc""",
+            2: Custom (see garnet/RoutingUnit.cc)
+            3: Ring (for Ring. see garnet/RoutingUnit.cc)
+            4: Bit_Tree (for Bit_Tree. see garnet/RoutingUnit.cc)
+            5: Three_Bit_Tree (for Three_Bit_Tree. see garnet/RoutingUnit.cc)""",
     )
     parser.add_argument(
         "--network-fault-model",

@@ -1,0 +1,56 @@
+拓扑结构对比: ThreeBitTree vs 2BitTree vs MeshBypass vs Mesh_XY
+测试时间: 2025-09-07 04:47:35
+节点数: 64, 注入率: 0.1, 仿真周期: 10000
+
+[ThreeBitTree]
+packets_injected = 255570
+packets_received = 255329
+avg_queue_latency = 2.003678
+avg_network_latency = 9.305414
+avg_total_latency = 11.309091
+avg_hops = 2.647306
+reception_rate = 0.398952
+
+[2BitTree]
+packets_injected = 255569
+packets_received = 255307
+avg_queue_latency = 2.007708
+avg_network_latency = 10.5167
+avg_total_latency = 12.524408
+avg_hops = 3.016412
+reception_rate = 0.398917
+
+[MeshBypass]
+packets_injected = 255570
+packets_received = 255267
+avg_queue_latency = 2.000047
+avg_network_latency = 11.394994
+avg_total_latency = 13.395041
+avg_hops = 3.696052
+reception_rate = 0.398855
+
+[Mesh_XY]
+packets_injected = 218164
+packets_received = 217540
+avg_queue_latency = 577.738057
+avg_network_latency = 26.968443
+avg_total_latency = 604.7065
+avg_hops = 5.144079
+reception_rate = 0.339906
+
+
+[比较: ThreeBitTree vs Mesh_XY]
+平均跳数减少: 48.54%
+平均延迟减少: 98.13%
+
+[比较: 2BitTree vs Mesh_XY]
+平均跳数减少: 41.36%
+平均延迟减少: 97.93%
+
+[比较: MeshBypass vs Mesh_XY]
+平均跳数减少: 28.15%
+平均延迟减少: 97.78%
+
+[比较: ThreeBitTree vs 2BitTree]
+平均跳数减少: 12.24%
+平均延迟减少: 9.70%

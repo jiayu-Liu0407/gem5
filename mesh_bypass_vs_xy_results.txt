@@ -1,0 +1,21 @@
+mesh_bypass_vs_xy comparison
+2025-09-07 02:24:36
+
+[MeshBypass]
+packets_injected = 223803
+packets_received = 223527
+avg_queue_latency = 2
+avg_network_latency = 11.179817
+avg_total_latency = 13.179817
+avg_hops = 3.696806
+reception_rate = 0.349261
+
+[Mesh_XY]
+packets_injected = 215316
+packets_received = 214756
+avg_queue_latency = 167.291284
+avg_network_latency = 24.219314
+avg_total_latency = 191.510598
+avg_hops = 5.218131
+reception_rate = 0.335556
+

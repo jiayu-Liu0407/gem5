@@ -195,6 +195,12 @@ RoutingUnit::outportCompute(RouteInfo route, int inport,
             outportComputeCustom(route, inport, inport_dirn); break;
         case RING_: outport =
             outportComputeRing(route, inport, inport_dirn); break;
+        case XY_BYPASS_: outport =
+            outportComputeXYBypass(route, inport, inport_dirn); break;
+        case BIT_TREE_: outport =
+            outportCompute2BitTree(route, inport, inport_dirn); break;
+        case THREE_BIT_TREE_: outport =
+            outportCompute3BitTree(route, inport, inport_dirn); break;
         default: outport =
             lookupRoutingTable(route.vnet, route.net_dest); break;
     }
@@ -292,6 +298,215 @@ RoutingUnit::outportComputeRing(RouteInfo route, int inport,
     } else {
         return m_outports_dirn2idx["West"];  // 逆时针
     }
+}
+
+int
+RoutingUnit::outportComputeXYBypass(RouteInfo route,
+                                   int inport,
+                                   PortDirection inport_dirn)
+{
+    PortDirection outport_dirn = "Unknown";
+
+    int num_rows = m_router->get_net_ptr()->getNumRows();
+    int num_cols = m_router->get_net_ptr()->getNumCols();
+    assert(num_rows > 0 && num_cols > 0);
+
+    int my_id = m_router->get_id();
+    int my_x = my_id % num_cols;
+    int my_y = my_id / num_cols;
+
+    int dest_id = route.dest_router;
+    int dest_x = dest_id % num_cols;
+    int dest_y = dest_id / num_cols;
+
+    int x_hops = dest_x - my_x;
+    int y_hops = dest_y - my_y;
+
+    bool use_bypass = false;
+    
+    // 只要同方向且至少有1跳就采用对角线
+    if (x_hops >= 1 && y_hops >= 1) {
+        if (m_outports_dirn2idx.find("Southeast") != m_outports_dirn2idx.end()) {
+            outport_dirn = "Southeast";
+            use_bypass = true;
+            DPRINTF(RubyNetwork, "Using Southeast bypass from router %d to %d (hops=%d,%d)\n", 
+                    my_id, dest_id, x_hops, y_hops);
+        }
+    } else if (x_hops >= 1 && y_hops <= -1) {
+        if (m_outports_dirn2idx.find("Northeast") != m_outports_dirn2idx.end()) {
+            outport_dirn = "Northeast";
+            use_bypass = true;
+            DPRINTF(RubyNetwork, "Using Northeast bypass from router %d to %d (hops=%d,%d)\n", 
+                    my_id, dest_id, x_hops, y_hops);
+        }
+    } else if (x_hops <= -1 && y_hops >= 1) {
+        // 西南方向
+        if (m_outports_dirn2idx.find("Southwest") != m_outports_dirn2idx.end()) {
+            outport_dirn = "Southwest";
+            use_bypass = true;
+            DPRINTF(RubyNetwork, "Using Southwest bypass from router %d to %d (hops=%d,%d)\n", 
+                    my_id, dest_id, x_hops, y_hops);
+        }
+    } else if (x_hops <= -1 && y_hops <= -1) {
+        if (m_outports_dirn2idx.find("Northwest") != m_outports_dirn2idx.end()) {
+            outport_dirn = "Northwest";
+            use_bypass = true;
+            DPRINTF(RubyNetwork, "Using Northwest bypass from router %d to %d (hops=%d,%d)\n", 
+                    my_id, dest_id, x_hops, y_hops);
+        }
+    }
+    
+    // 不能使用bypass就用标准XY路由
+    if (!use_bypass) {
+        if (x_hops > 0) {
+            outport_dirn = "East";
+        } else if (x_hops < 0) {
+            outport_dirn = "West";
+        } else if (y_hops > 0) {
+            outport_dirn = "South";
+        } else if (y_hops < 0) {
+            outport_dirn = "North";
+        } else {
+            outport_dirn = "Local";
+        }
+        
+        DPRINTF(RubyNetwork, "Using standard XY routing: %s from router %d to %d\n",
+                outport_dirn.c_str(), my_id, dest_id);
+    }
+
+    if (m_outports_dirn2idx.find(outport_dirn) == m_outports_dirn2idx.end()) {
+        fatal("Output port direction %s not found in router %d\n", 
+              outport_dirn.c_str(), my_id);
+    }
+
+    return m_outports_dirn2idx[outport_dirn];
+}
+
+int
+RoutingUnit::outportCompute2BitTree(RouteInfo route,
+                                   int inport,
+                                   PortDirection inport_dirn)
+{
+    int num_routers = m_router->get_net_ptr()->getNumRouters();
+    int n = (int)ceil(log2(num_routers)); // 确定需要的位数
+    
+    int my_id = m_router->get_id();
+    int dest_id = route.dest_router;
+    
+    // 如果目标就是当前路由器，使用Local端口
+    if (dest_id == my_id) {
+        return m_outports_dirn2idx["Local"];
+    }
+    
+    // 计算当前路由器与目标路由器的差值
+    int diff = (dest_id - my_id + num_routers) % num_routers;
+    
+    // 查找差值中最高位的1
+    for (int t = n-1; t >= 0; t--) {
+        int bit_mask = 1 << t;
+        if (diff & bit_mask) {
+            // 找到置位的最高位，尝试使用对应的链接
+            // 构造与TwoBitTree.py中相同格式的端口名称
+            std::string port_name = "Bit_" + std::to_string(t) + "_" + 
+                                    std::to_string(my_id) + "_" + 
+                                    std::to_string((my_id + bit_mask) % num_routers);
+            
+            // 检查是否有此端口
+            if (m_outports_dirn2idx.find(port_name) != m_outports_dirn2idx.end()) {
+                return m_outports_dirn2idx[port_name];
+            }
+            
+            // 如果没有直接链接，考虑其他可能的路径
+            for (int other_router = 0; other_router < num_routers; other_router++) {
+                port_name = "Bit_" + std::to_string(t) + "_" + 
+                            std::to_string(my_id) + "_" + 
+                            std::to_string(other_router);
+                if (m_outports_dirn2idx.find(port_name) != m_outports_dirn2idx.end()) {
+                    return m_outports_dirn2idx[port_name];
+                }
+            }
+        }
+    }
+    
+    // 如果无法确定输出端口，使用查表路由
+    DPRINTF(RubyNetwork, "Could not determine BitTree port, falling back to table lookup\n");
+    return lookupRoutingTable(route.vnet, route.net_dest);
+}
+
+// 添加3BitTree路由算法实现
+
+int
+RoutingUnit::outportCompute3BitTree(RouteInfo route,
+                                   int inport,
+                                   PortDirection inport_dirn)
+{
+    int num_routers = m_router->get_net_ptr()->getNumRouters();
+    int n = (int)ceil(log(num_routers) / log(3)); // 确定3进制需要的位数
+    
+    int my_id = m_router->get_id();
+    int dest_id = route.dest_router;
+    
+    // 如果目标就是当前路由器，使用Local端口
+    if (dest_id == my_id) {
+        return m_outports_dirn2idx["Local"];
+    }
+    
+    // 计算当前路由器与目标路由器的距离
+    int diff = (dest_id - my_id + num_routers) % num_routers;
+    
+    // 计算3进制表示，找到最佳路径
+    for (int t = n-1; t >= 0; t--) {
+        int power_3t = (int)pow(3, t);
+        
+        // 计算余数 (0, 1, 2)
+        int remainder = diff / power_3t % 3;
+        
+        if (remainder == 1) {
+            // 需要加上 3^t，使用正向链接
+            std::string port_name = "Tri_" + std::to_string(t) + "_" + 
+                                    std::to_string(my_id) + "_" + 
+                                    std::to_string((my_id + power_3t) % num_routers);
+            
+            if (m_outports_dirn2idx.find(port_name) != m_outports_dirn2idx.end()) {
+                return m_outports_dirn2idx[port_name];
+            }
+        } 
+        else if (remainder == 2) {
+            // 需要加上 2*3^t，使用负向链接
+            std::string port_name = "TriNeg_" + std::to_string(t) + "_" + 
+                                    std::to_string(my_id) + "_" + 
+                                    std::to_string((my_id + 2 * power_3t) % num_routers);
+            
+            if (m_outports_dirn2idx.find(port_name) != m_outports_dirn2idx.end()) {
+                return m_outports_dirn2idx[port_name];
+            }
+        }
+    }
+    
+    // 如果无法通过3BitTree路由找到路径，尝试查找任何可能的连接
+    for (int t = n-1; t >= 0; t--) {
+        for (int other_router = 0; other_router < num_routers; other_router++) {
+            // 尝试正向链接
+            std::string port_name = "Tri_" + std::to_string(t) + "_" + 
+                                    std::to_string(my_id) + "_" + 
+                                    std::to_string(other_router);
+            if (m_outports_dirn2idx.find(port_name) != m_outports_dirn2idx.end()) {
+                return m_outports_dirn2idx[port_name];
+            }
+            
+            // 尝试负向链接
+            port_name = "TriNeg_" + std::to_string(t) + "_" + 
+                        std::to_string(my_id) + "_" + 
+                        std::to_string(other_router);
+            if (m_outports_dirn2idx.find(port_name) != m_outports_dirn2idx.end()) {
+                return m_outports_dirn2idx[port_name];
+            }
+        }
+    }
+    
+    // 如果仍然无法找到路径，使用查表路由
+    DPRINTF(RubyNetwork, "Could not determine ThreeBitTree port, falling back to table lookup\n");
+    return lookupRoutingTable(route.vnet, route.net_dest);
 }
 
 } // namespace garnet
