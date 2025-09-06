@@ -459,16 +459,26 @@ NetworkInterface::flitisizeMessage(MsgPtr msg_ptr, int vnet)
 int
 NetworkInterface::calculateVC(int vnet)
 {
+    bool is_wormhole = m_net_ptr->isWormholeEnabled();
     for (int i = 0; i < m_vc_per_vnet; i++) {
-        int delta = m_vc_allocator[vnet];
-        m_vc_allocator[vnet]++;
-        if (m_vc_allocator[vnet] == m_vc_per_vnet)
-            m_vc_allocator[vnet] = 0;
+        int delta = (i + m_vc_allocator[vnet]) % m_vc_per_vnet;
+        int vc = (vnet * m_vc_per_vnet) + delta;
 
-        if (outVcState[(vnet*m_vc_per_vnet) + delta].isInState(
-                    IDLE_, curTick())) {
-            vc_busy_counter[vnet] = 0;
-            return ((vnet*m_vc_per_vnet) + delta);
+        if (is_wormhole) {
+            // 虫洞模式：只要输出VC有credit就可以使用
+            // 不需要检查IDLE状态，因为虫洞模式允许多个包共享VC
+            if (outVcState[vc].has_credit()) {
+                vc_busy_counter[vnet] = 0;
+                m_vc_allocator[vnet] = (delta + 1) % m_vc_per_vnet;
+                return vc;
+            }
+        } else {
+            // 原模式：必须是IDLE状态才能分配
+            if (outVcState[vc].isInState(IDLE_, curTick())) {
+                vc_busy_counter[vnet] = 0;
+                m_vc_allocator[vnet] = (delta + 1) % m_vc_per_vnet;
+                return vc;
+            }
         }
     }
 

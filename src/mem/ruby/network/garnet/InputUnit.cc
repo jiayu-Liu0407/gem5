@@ -58,8 +58,14 @@ InputUnit::InputUnit(int id, PortDirection direction, Router *router)
 
     // Instantiating the virtual channels
     virtualChannels.reserve(m_num_vcs);
+    bool is_wormhole = m_router->get_net_ptr()->isWormholeEnabled();
+
     for (int i=0; i < m_num_vcs; i++) {
-        virtualChannels.emplace_back();
+        if (is_wormhole) {
+            virtualChannels.emplace_back(16);  // 虫洞模式：固定buffer大小为16
+        } else {
+            virtualChannels.emplace_back();    // 正常模式：使用默认buffer大小
+        }
     }
 }
 
@@ -86,9 +92,27 @@ InputUnit::wakeup()
         assert(t_flit->m_width == m_router->getBitWidth());
         int vc = t_flit->get_vc();
         t_flit->increment_hops(); // for stats
+        bool is_wormhole = m_router->get_net_ptr()->isWormholeEnabled();
 
         if ((t_flit->get_type() == HEAD_) ||
             (t_flit->get_type() == HEAD_TAIL_)) {
+
+                int outport = m_router->route_compute(t_flit->get_route(),
+                m_id, m_direction);
+
+            // 将路由信息直接存储在flit中
+            t_flit->set_outport(outport);
+
+            if (is_wormhole) {
+                // 虫洞模式：不要求VC必须是IDLE状态，只要有空间就可以接收
+                if (virtualChannels[vc].get_state() == IDLE_) {
+                    set_vc_active(vc, curTick());
+                }
+
+                DPRINTF(RubyNetwork,
+                        "Router[%d] Wormhole HEAD flit VC[%d] to port %d\n",
+                        m_router->get_id(), vc, outport);
+            } else {
 
             assert(virtualChannels[vc].get_state() == IDLE_);
             set_vc_active(vc, curTick());
@@ -101,6 +125,7 @@ InputUnit::wakeup()
             // All flits in this packet will use this output port
             // The output port field in the flit is updated after it wins SA
             grant_outport(vc, outport);
+            }
 
         } else {
             assert(virtualChannels[vc].get_state() == ACTIVE_);

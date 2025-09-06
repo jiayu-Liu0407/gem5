@@ -88,8 +88,16 @@ OutputUnit::increment_credit(int out_vc)
 bool
 OutputUnit::has_credit(int out_vc)
 {
-    assert(outVcState[out_vc].isInState(ACTIVE_, curTick()));
-    return outVcState[out_vc].has_credit();
+    bool is_wormhole = m_router->get_net_ptr()->isWormholeEnabled();
+
+    if (is_wormhole) {
+        // 虫洞模式：只检查credit数量，不检查VC状态
+        return outVcState[out_vc].has_credit();
+    } else {
+        // 正常模式：需要VC处于ACTIVE状态且有credit
+        assert(outVcState[out_vc].isInState(ACTIVE_, curTick()));
+        return outVcState[out_vc].has_credit();
+    }
 }
 
 
@@ -97,10 +105,18 @@ OutputUnit::has_credit(int out_vc)
 bool
 OutputUnit::has_free_vc(int vnet)
 {
+    bool is_wormhole = m_router->get_net_ptr()->isWormholeEnabled();
     int vc_base = vnet*m_vc_per_vnet;
     for (int vc = vc_base; vc < vc_base + m_vc_per_vnet; vc++) {
+        if (is_wormhole) {
+            // 虫洞模式：只要有credit就认为可用
+            if (outVcState[vc].has_credit()) {
+                return true;  // 找到一个就返回true
+            }
+        } else {
         if (is_vc_idle(vc, curTick()))
             return true;
+        }
     }
 
     return false;
@@ -110,12 +126,21 @@ OutputUnit::has_free_vc(int vnet)
 int
 OutputUnit::select_free_vc(int vnet)
 {
+    bool is_wormhole = m_router->get_net_ptr()->isWormholeEnabled();
     int vc_base = vnet*m_vc_per_vnet;
     for (int vc = vc_base; vc < vc_base + m_vc_per_vnet; vc++) {
+        if (is_wormhole) {
+            // 虫洞模式：有credit就可以分配
+            if (outVcState[vc].has_credit()) {
+                // 在虫洞模式下，不需要设置为ACTIVE状态
+                return vc;
+            }
+        } else {
         if (is_vc_idle(vc, curTick())) {
             outVcState[vc].setState(ACTIVE_, curTick());
             return vc;
         }
+    }
     }
 
     return -1;

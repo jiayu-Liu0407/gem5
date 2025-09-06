@@ -1,0 +1,69 @@
+Network Performance Comparison Results
+==================================================
+Test Date: 2025-09-06 19:18:24
+Configurations:
+1. Baseline: VC=1, Depth=1
+2. VC16: VC=16, Depth=1
+3. Wormhole: VC=1, Depth=16 (wormhole flow control)
+==================================================
+
+# baseline Configuration Stats
+# ==================================================
+packets_injected = 43286 packets
+packets_received = 43147 packets
+average_packet_queueing_latency = 3194.441815 cycles/packet
+average_packet_network_latency = 30.182701 cycles/packet
+average_packet_latency = 3224.624516 cycles/packet
+average_hops = 4.435812 hops/flit
+reception_rate = 0.067417 packets/node/cycle
+
+# vc16 Configuration Stats
+# ==================================================
+packets_injected = 137868 packets
+packets_received = 136328 packets
+average_packet_queueing_latency = 848.027771 cycles/packet
+average_packet_network_latency = 108.930029 cycles/packet
+average_packet_latency = 956.957800 cycles/packet
+average_hops = 5.166862 hops/flit
+reception_rate = 0.213012 packets/node/cycle
+
+# wormhole Configuration Stats
+# ==================================================
+packets_injected = 137714 packets
+packets_received = 136168 packets
+average_packet_queueing_latency = 851.029816 cycles/packet
+average_packet_network_latency = 109.260597 cycles/packet
+average_packet_latency = 960.290413 cycles/packet
+average_hops = 5.169930 hops/flit
+reception_rate = 0.212762 packets/node/cycle
+
+
+# SUMMARY TABLE
+# Configuration comparison
+
+[baseline]
+packets_injected = 43286
+packets_received = 43147
+average_packet_queueing_latency = 3194.441815
+average_packet_network_latency = 30.182701
+average_packet_latency = 3224.624516
+average_hops = 4.435812
+reception_rate = 0.067417
+
+[vc16]
+packets_injected = 137868
+packets_received = 136328
+average_packet_queueing_latency = 848.027771
+average_packet_network_latency = 108.930029
+average_packet_latency = 956.9578
+average_hops = 5.166862
+reception_rate = 0.213012
+
+[wormhole]
+packets_injected = 137714
+packets_received = 136168
+average_packet_queueing_latency = 851.029816
+average_packet_network_latency = 109.260597
+average_packet_latency = 960.290413
+average_hops = 5.16993
+reception_rate = 0.212762

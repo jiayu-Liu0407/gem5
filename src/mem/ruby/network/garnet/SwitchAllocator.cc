@@ -121,8 +121,18 @@ SwitchAllocator::arbitrate_inports()
             if (input_unit->need_stage(invc, SA_, curTick())) {
                 // This flit is in SA stage
 
-                int outport = input_unit->get_outport(invc);
-                int outvc = input_unit->get_outvc(invc);
+                bool is_wormhole = m_router->get_net_ptr()->isWormholeEnabled();
+                int outport, outvc;
+
+                if (is_wormhole) {
+                    // 虫洞模式：直接从flit获取outport（已在InputUnit计算好）
+    outport = input_unit->peekTopFlit(invc)->get_outport();
+    outvc = input_unit->get_outvc(invc);
+                } else {
+
+                    outport = input_unit->get_outport(invc);
+                    outvc = input_unit->get_outvc(invc);
+                }
 
                 // check if the flit in this InputVC is allowed to be sent
                 // send_allowed conditions described in that function.
@@ -179,11 +189,19 @@ SwitchAllocator::arbitrate_outports()
                 // grant this outport to this inport
                 int invc = m_vc_winners[inport];
 
-                int outvc = input_unit->get_outvc(invc);
+                bool is_wormhole = m_router->get_net_ptr()->isWormholeEnabled();
+                int outvc;
+                if (is_wormhole) {
+                    // 虫洞模式：每次都需要重新分配outvc
+                    outvc = vc_allocate(outport, inport, invc);
+                } else {
+                    // 正常模式
+                    outvc = input_unit->get_outvc(invc);
                 if (outvc == -1) {
                     // VC Allocation - select any free VC from outport
                     outvc = vc_allocate(outport, inport, invc);
                 }
+            }
 
                 // remove flit from Input VC
                 flit *t_flit = input_unit->getTopFlit(invc);
@@ -224,11 +242,13 @@ SwitchAllocator::arbitrate_outports()
                 if ((t_flit->get_type() == TAIL_) ||
                     t_flit->get_type() == HEAD_TAIL_) {
 
-                    // This Input VC should now be empty
-                    assert(!(input_unit->isReady(invc, curTick())));
+                    if (!is_wormhole) {
+                        // This Input VC should now be empty
+                        assert(!(input_unit->isReady(invc, curTick())));
 
-                    // Free this VC
-                    input_unit->set_vc_idle(invc, curTick());
+                        // Free this VC
+                        input_unit->set_vc_idle(invc, curTick());
+                    }
 
                     // Send a credit back
                     // along with the information that this VC is now idle
@@ -292,6 +312,7 @@ SwitchAllocator::send_allowed(int inport, int invc, int outport, int outvc)
     bool has_credit = false;
 
     auto output_unit = m_router->getOutputUnit(outport);
+    bool is_wormhole = m_router->get_net_ptr()->isWormholeEnabled();
     if (!has_outvc) {
 
         // needs outvc

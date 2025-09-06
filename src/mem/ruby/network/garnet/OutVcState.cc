@@ -54,10 +54,17 @@ OutVcState::OutVcState(int id, GarnetNetwork *network_ptr,
      */
     int vnet = floor(id/consumerVcs);
 
+    if (network_ptr->isWormholeEnabled()) {
+        // 虫洞模式：固定buffer大小为16
+        m_max_credit_count = 16;
+    } else {
+        // 正常模式：根据vnet类型设置
+
     if (network_ptr->get_vnet_type(vnet) == DATA_VNET_)
         m_max_credit_count = network_ptr->getBuffersPerDataVC();
     else
         m_max_credit_count = network_ptr->getBuffersPerCtrlVC();
+    }
 
     m_credit_count = m_max_credit_count;
     assert(m_credit_count >= 1);

@@ -50,6 +50,7 @@ class VirtualChannel
 {
   public:
     VirtualChannel();
+    VirtualChannel(int buffer_size);
     ~VirtualChannel() = default;
 
     bool need_stage(flit_stage stage, Tick time);
