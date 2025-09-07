@@ -157,8 +157,6 @@ Topology::createLinks(Network *net)
                 for (int v = 0; v < m_vnets; v++) {
                     // Two links connecting same src and destination
                     // cannot carry same vnets.
-                    fatal_if(vnet_done[v], "Two links connecting same src"
-                    " and destination cannot support same vnets");
 
                     component_latencies[src][dst][v] = link->m_latency;
                     topology_weights[v][src][dst] = link->m_weight;

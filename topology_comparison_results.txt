@@ -1,56 +1,83 @@
-拓扑结构对比: ThreeBitTree vs 2BitTree vs MeshBypass vs Mesh_XY
-测试时间: 2025-09-07 04:47:35
-节点数: 64, 注入率: 0.1, 仿真周期: 10000
+拓扑结构对比: Ring vs ThreeBitTree vs 2BitTree vs MeshBypass vs Mesh_XY
+测试时间: 2025-09-07 16:40:07
+节点数: 64, 注入率: 0.8, 仿真周期: 10000
+
+[Ring]
+packets_injected = 22116
+packets_received = 22039
+avg_queue_latency = 36.254186
+avg_network_latency = 17.725895
+avg_total_latency = 53.980081
+avg_hops = 3.98843
+reception_rate = 0.275487
 
 [ThreeBitTree]
-packets_injected = 255570
-packets_received = 255329
-avg_queue_latency = 2.003678
-avg_network_latency = 9.305414
-avg_total_latency = 11.309091
-avg_hops = 2.647306
-reception_rate = 0.398952
+packets_injected = 22643
+packets_received = 22608
+avg_queue_latency = 2
+avg_network_latency = 7.005308
+avg_total_latency = 9.005308
+avg_hops = 1.784103
+reception_rate = 0.2826
 
 [2BitTree]
-packets_injected = 255569
-packets_received = 255307
-avg_queue_latency = 2.007708
-avg_network_latency = 10.5167
-avg_total_latency = 12.524408
-avg_hops = 3.016412
-reception_rate = 0.398917
+packets_injected = 22643
+packets_received = 22605
+avg_queue_latency = 2.000044
+avg_network_latency = 7.697279
+avg_total_latency = 9.697324
+avg_hops = 2.065074
+reception_rate = 0.282562
 
 [MeshBypass]
-packets_injected = 255570
-packets_received = 255267
-avg_queue_latency = 2.000047
-avg_network_latency = 11.394994
-avg_total_latency = 13.395041
-avg_hops = 3.696052
-reception_rate = 0.398855
+packets_injected = 22643
+packets_received = 22610
+avg_queue_latency = 2
+avg_network_latency = 6.902256
+avg_total_latency = 8.902256
+avg_hops = 1.789695
+reception_rate = 0.282625
 
 [Mesh_XY]
-packets_injected = 218164
-packets_received = 217540
-avg_queue_latency = 577.738057
-avg_network_latency = 26.968443
-avg_total_latency = 604.7065
-avg_hops = 5.144079
-reception_rate = 0.339906
+packets_injected = 22643
+packets_received = 22605
+avg_queue_latency = 2
+avg_network_latency = 8.487237
+avg_total_latency = 10.487237
+avg_hops = 2.507941
+reception_rate = 0.282562
 
+
+[比较: Ring vs Mesh_XY]
+平均跳数减少: -59.03%
+平均延迟减少: -414.72%
 
 [比较: ThreeBitTree vs Mesh_XY]
-平均跳数减少: 48.54%
-平均延迟减少: 98.13%
+平均跳数减少: 28.86%
+平均延迟减少: 14.13%
 
 [比较: 2BitTree vs Mesh_XY]
-平均跳数减少: 41.36%
-平均延迟减少: 97.93%
+平均跳数减少: 17.66%
+平均延迟减少: 7.53%
 
 [比较: MeshBypass vs Mesh_XY]
-平均跳数减少: 28.15%
-平均延迟减少: 97.78%
+平均跳数减少: 28.64%
+平均延迟减少: 15.11%
+
+[Ring与其他拓扑的比较]
+
+Ring vs ThreeBitTree:
+Ring平均跳数多: 55.27%
+Ring平均延迟多: 83.32%
+
+Ring vs 2BitTree:
+Ring平均跳数多: 48.22%
+Ring平均延迟多: 82.04%
+
+Ring vs MeshBypass:
+Ring平均跳数多: 55.13%
+Ring平均延迟多: 83.51%
 
 [比较: ThreeBitTree vs 2BitTree]
-平均跳数减少: 12.24%
-平均延迟减少: 9.70%
+平均跳数减少: 13.61%
+平均延迟减少: 7.14%

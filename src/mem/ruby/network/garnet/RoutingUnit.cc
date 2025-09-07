@@ -282,22 +282,77 @@ int
 RoutingUnit::outportComputeRing(RouteInfo route, int inport,
                                 PortDirection inport_dirn)
 {
-    int src = m_router->get_id();
+    int current = m_router->get_id();
     int dest = route.dest_router;
 
-    // 获取实际的路由器数量，而不是硬编码16
+    // 如果目标就是当前路由器，使用Local端口
+    if (dest == current) {
+        return m_outports_dirn2idx["Local"];
+    }
+
     int num_routers = m_router->get_net_ptr()->getNumRouters();
 
-    // 计算顺时针和逆时针距离
-    int clockwise_dist = (dest - src + num_routers) % num_routers;
-    int counter_clockwise_dist = (src - dest + num_routers) % num_routers;
+    // 选择当前节点到目的地的方向（顺时针或逆时针），用于本跳的方向决定
+    int cw_dist_current = (dest - current + num_routers) % num_routers;
+    int ccw_dist_current = (current - dest + num_routers) % num_routers;
+    bool prefer_cw_current = (cw_dist_current <= ccw_dist_current);
 
-    // 选择较短路径
-    if (clockwise_dist <= counter_clockwise_dist) {
-        return m_outports_dirn2idx["East"];  // 顺时针
+    // 特殊 router id（按照要求为 router1）
+    const int special_router = 1;
+
+    // 判断从原始 src_router 到 dest_router 的最短路径是否经过 special_router
+    int src = route.src_router;
+    int cw_dist_src_dest = (dest - src + num_routers) % num_routers;
+    int ccw_dist_src_dest = (src - dest + num_routers) % num_routers;
+    bool choose_cw = (cw_dist_src_dest <= ccw_dist_src_dest);
+
+    bool path_includes_special = false;
+    if (choose_cw) {
+        int dist_src_to_special = (special_router - src + num_routers) % num_routers;
+        if (dist_src_to_special > 0 && dist_src_to_special <= cw_dist_src_dest)
+            path_includes_special = true;
     } else {
-        return m_outports_dirn2idx["West"];  // 逆时针
+        int dist_src_to_special = (src - special_router + num_routers) % num_routers;
+        if (dist_src_to_special > 0 && dist_src_to_special <= ccw_dist_src_dest)
+            path_includes_special = true;
     }
+
+    // 决定是否使用备用边（第二类）
+    bool use_backup = false;
+    if (path_includes_special) {
+        int dist_src_to_special = choose_cw ?
+            (special_router - src + num_routers) % num_routers :
+            (src - special_router + num_routers) % num_routers;
+
+        int dist_src_to_current = choose_cw ?
+            (current - src + num_routers) % num_routers :
+            (src - current + num_routers) % num_routers;
+
+        // 若当前已经到达或越过 special_router，则从此及之后使用备用边
+        if (dist_src_to_current >= dist_src_to_special)
+            use_backup = true;
+    } else {
+        // 如果路径不经过 special_router，始终使用主边
+        use_backup = false;
+    }
+
+    PortDirection chosen_dir;
+    if (prefer_cw_current) {
+        chosen_dir = use_backup ? "East2" : "East";
+    } else {
+        chosen_dir = use_backup ? "West2" : "West";
+    }
+
+    // 如果备用边不存在则回退到主边（保持健壮性）
+    if (m_outports_dirn2idx.find(chosen_dir) == m_outports_dirn2idx.end()) {
+        PortDirection primary = (chosen_dir == "East2") ? "East" : "West";
+        if (m_outports_dirn2idx.find(primary) != m_outports_dirn2idx.end())
+            return m_outports_dirn2idx[primary];
+        fatal("Output port direction %s not found in router %d\n",
+              chosen_dir.c_str(), current);
+    }
+
+    return m_outports_dirn2idx[chosen_dir];
 }
 
 int

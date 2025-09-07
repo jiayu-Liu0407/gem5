@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-对比 MeshBypass、Mesh_XY、2BitTree 和 ThreeBitTree 四种拓扑的测试脚本。
+对比 Ring、MeshBypass、Mesh_XY、2BitTree 和 ThreeBitTree 五种拓扑的测试脚本。
+- Ring: routing-algorithm=3
 - MeshBypass: routing-algorithm=4
 - Mesh_XY: routing-algorithm=1
 - 2BitTree: routing-algorithm=5 (二进制跳转路由)
 - ThreeBitTree: routing-algorithm=6 (三进制跳转路由)
-默认使用 64 CPUs/dirs，8行网格(Mesh)或64节点(BitTree)，注入率 0.8，仿真 10000 周期。
+默认使用 64 CPUs/dirs，8行网格(Mesh)或64节点(BitTree/Ring)，注入率 0.8，仿真 10000 周期。
 """
 import os
 import re
@@ -18,12 +19,12 @@ BASE_CMD = [
     "./build/NULL/gem5.opt",
     "configs/example/garnet_synth_traffic.py",
     "--network=garnet",
-    "--num-cpus=64",
-    "--num-dirs=64",
+    "--num-cpus=16",
+    "--num-dirs=16",
     "--inj-vnet=0",
     "--synthetic=uniform_random",
-    "--sim-cycles=10000",
-    "--injectionrate=0.8",
+    "--sim-cycles=5000",
+    "--injectionrate=0.57",
 ]
 
 TIMEOUT = 900  # seconds
@@ -86,20 +87,25 @@ def extract_stats(output_dir):
     return stats
 
 def print_table(all_stats):
-    print("\n" + "="*80)
-    print("拓扑性能对比: ThreeBitTree vs 2BitTree vs MeshBypass vs Mesh_XY")
-    print("="*80)
+    print("\n" + "="*100)
+    print("拓扑性能对比: Ring vs ThreeBitTree vs 2BitTree vs MeshBypass vs Mesh_XY")
+    print("="*100)
     
     keys = ["packets_injected", "packets_received", "avg_queue_latency", 
             "avg_network_latency", "avg_total_latency", "avg_hops", "reception_rate"]
     
-    # 确定所有拓扑名称并排序
-    topo_names = sorted(all_stats.keys())
+    # 确定所有拓扑名称并排序 - Ring放在最前面
+    topo_names = []
+    if "Ring" in all_stats:
+        topo_names.append("Ring")
+    for name in sorted(all_stats.keys()):
+        if name != "Ring":
+            topo_names.append(name)
     
     # 创建表头
     header = f"{'指标':<30}"
     for name in topo_names:
-        header += f" {name:<18}"
+        header += f" {name:<16}"
     print(header)
     print("-" * len(header))
     
@@ -108,16 +114,16 @@ def print_table(all_stats):
         row = f"{k:<30}"
         for name in topo_names:
             val = all_stats.get(name, {}).get(k, "N/A")
-            row += f" {fmt_val(val):<18}"
+            row += f" {fmt_val(val):<16}"
         print(row)
     
     # 计算各拓扑与Mesh_XY的对比
     if "Mesh_XY" in all_stats:
-        print("\n" + "-"*80)
+        print("\n" + "-"*100)
         mesh_hops = all_stats["Mesh_XY"].get("avg_hops", 0)
         mesh_lat = all_stats["Mesh_XY"].get("avg_total_latency", 0)
         
-        for name in ["ThreeBitTree", "2BitTree", "MeshBypass"]:
+        for name in ["Ring", "ThreeBitTree", "2BitTree", "MeshBypass"]:
             if name in all_stats:
                 print(f"{name}相对Mesh_XY的改进：")
                 
@@ -131,6 +137,34 @@ def print_table(all_stats):
                     lat_improve = (mesh_lat - topo_lat) / mesh_lat * 100
                     print(f"  平均延迟减少: {lat_improve:.2f}%")
                 print("")
+        
+        # Ring与其他高级拓扑的比较
+        if "Ring" in all_stats:
+            ring_hops = all_stats["Ring"].get("avg_hops", 0)
+            ring_lat = all_stats["Ring"].get("avg_total_latency", 0)
+            
+            print("Ring与其他拓扑的比较：")
+            for name in ["ThreeBitTree", "2BitTree", "MeshBypass"]:
+                if name in all_stats:
+                    topo_hops = all_stats[name].get("avg_hops", 0)
+                    topo_lat = all_stats[name].get("avg_total_latency", 0)
+                    
+                    if ring_hops and topo_hops and ring_hops != "N/A" and topo_hops != "N/A":
+                        if ring_hops < topo_hops:
+                            hop_improve = (topo_hops - ring_hops) / topo_hops * 100
+                            print(f"  Ring比{name}平均跳数少: {hop_improve:.2f}%")
+                        else:
+                            hop_worse = (ring_hops - topo_hops) / ring_hops * 100
+                            print(f"  Ring比{name}平均跳数多: {hop_worse:.2f}%")
+                    
+                    if ring_lat and topo_lat and ring_lat != "N/A" and topo_lat != "N/A":
+                        if ring_lat < topo_lat:
+                            lat_improve = (topo_lat - ring_lat) / topo_lat * 100
+                            print(f"  Ring比{name}平均延迟少: {lat_improve:.2f}%")
+                        else:
+                            lat_worse = (ring_lat - topo_lat) / ring_lat * 100
+                            print(f"  Ring比{name}平均延迟多: {lat_worse:.2f}%")
+            print("")
         
         # 如果有ThreeBitTree和2BitTree，比较它们
         if "ThreeBitTree" in all_stats and "2BitTree" in all_stats:
@@ -156,10 +190,11 @@ def fmt_val(x):
 
 def main():
     configs = [
+        ("Ring", "--topology=Ring --routing-algorithm=3"),
         ("ThreeBitTree", "--topology=ThreeBitTree --routing-algorithm=6"),
         ("2BitTree", "--topology=TwoBitTree --routing-algorithm=5"),
-        ("MeshBypass", "--topology=MeshBypass --routing-algorithm=4 --mesh-rows=8"),
-        ("Mesh_XY", "--topology=Mesh_XY --routing-algorithm=1 --mesh-rows=8"),
+        ("MeshBypass", "--topology=MeshBypass --routing-algorithm=4 --mesh-rows=4"),
+        ("Mesh_XY", "--topology=Mesh_XY --routing-algorithm=1 --mesh-rows=4"),
     ]
     
     results = {}
@@ -179,9 +214,9 @@ def main():
         
         # 保存结果到文件
         with open("topology_comparison_results.txt", "w") as f:
-            f.write("拓扑结构对比: ThreeBitTree vs 2BitTree vs MeshBypass vs Mesh_XY\n")
+            f.write("拓扑结构对比: Ring vs ThreeBitTree vs 2BitTree vs MeshBypass vs Mesh_XY\n")
             f.write(f"测试时间: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
-            f.write(f"节点数: 64, 注入率: 0.1, 仿真周期: 10000\n\n")
+            f.write(f"节点数: 64, 注入率: 0.8, 仿真周期: 10000\n\n")
             
             for n, s in results.items():
                 f.write(f"[{n}]\n")
@@ -194,7 +229,7 @@ def main():
                 mesh_hops = results["Mesh_XY"].get("avg_hops", 0)
                 mesh_lat = results["Mesh_XY"].get("avg_total_latency", 0)
                 
-                for name in ["ThreeBitTree", "2BitTree", "MeshBypass"]:
+                for name in ["Ring", "ThreeBitTree", "2BitTree", "MeshBypass"]:
                     if name in results:
                         f.write(f"\n[比较: {name} vs Mesh_XY]\n")
                         
@@ -207,6 +242,33 @@ def main():
                         if topo_lat and mesh_lat and topo_lat != "N/A" and mesh_lat != "N/A":
                             lat_improve = (mesh_lat - topo_lat) / mesh_lat * 100
                             f.write(f"平均延迟减少: {lat_improve:.2f}%\n")
+                
+                # Ring与其他拓扑的比较
+                if "Ring" in results:
+                    ring_hops = results["Ring"].get("avg_hops", 0)
+                    ring_lat = results["Ring"].get("avg_total_latency", 0)
+                    
+                    f.write("\n[Ring与其他拓扑的比较]\n")
+                    for name in ["ThreeBitTree", "2BitTree", "MeshBypass"]:
+                        if name in results:
+                            f.write(f"\nRing vs {name}:\n")
+                            topo_hops = results[name].get("avg_hops", 0)
+                            if ring_hops and topo_hops and ring_hops != "N/A" and topo_hops != "N/A":
+                                if ring_hops < topo_hops:
+                                    hop_improve = (topo_hops - ring_hops) / topo_hops * 100
+                                    f.write(f"Ring平均跳数少: {hop_improve:.2f}%\n")
+                                else:
+                                    hop_worse = (ring_hops - topo_hops) / ring_hops * 100
+                                    f.write(f"Ring平均跳数多: {hop_worse:.2f}%\n")
+                            
+                            topo_lat = results[name].get("avg_total_latency", 0)
+                            if ring_lat and topo_lat and ring_lat != "N/A" and topo_lat != "N/A":
+                                if ring_lat < topo_lat:
+                                    lat_improve = (topo_lat - ring_lat) / topo_lat * 100
+                                    f.write(f"Ring平均延迟少: {lat_improve:.2f}%\n")
+                                else:
+                                    lat_worse = (ring_lat - topo_lat) / ring_lat * 100
+                                    f.write(f"Ring平均延迟多: {lat_worse:.2f}%\n")
                 
                 # 比较ThreeBitTree和2BitTree
                 if "ThreeBitTree" in results and "2BitTree" in results:

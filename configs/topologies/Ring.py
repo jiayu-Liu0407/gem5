@@ -119,6 +119,38 @@ class Ring(SimpleTopology):
             )
             link_count += 1
 
+        # Add backup bidirectional links between adjacent routers
+        # These are the "second-class" physical channels (East2/West2)
+        for i in range(num_routers):
+            next_router = (i + 1) % num_routers
+            int_links.append(
+                IntLink(
+                    link_id=link_count,
+                    src_node=routers[i],
+                    dst_node=routers[next_router],
+                    src_outport="East2",
+                    dst_inport="West2",
+                    latency=link_latency,
+                    weight=1,
+                )
+            )
+            link_count += 1
+
+        for i in range(num_routers):
+            prev_router = (i - 1 + num_routers) % num_routers
+            int_links.append(
+                IntLink(
+                    link_id=link_count,
+                    src_node=routers[i],
+                    dst_node=routers[prev_router],
+                    src_outport="West2",
+                    dst_inport="East2",
+                    latency=link_latency,
+                    weight=1,
+                )
+            )
+            link_count += 1
+
         network.int_links = int_links
 
         return routers, int_links, ext_links
